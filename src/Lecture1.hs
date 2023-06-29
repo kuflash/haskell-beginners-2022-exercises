@@ -143,8 +143,8 @@ and lower than 6 elements (4, 5, 6, 7, 8 and 9).
 🕯 HINT: Use recursion to implement this function.
 -}
 lowerAndGreater :: Int -> [Int] -> String
-lowerAndGreater n list =
-    getResult 0 0 list
+lowerAndGreater n =
+    getResult 0 0
     where
         getResult :: Int -> Int -> [Int] -> String
         getResult lower greater [] = unwords [show n, "is greater than", show greater, "elements and lower than", show lower, "elements"]
