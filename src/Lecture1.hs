@@ -55,8 +55,8 @@ Explanation: @sumOfSquares 3 4@ should be equal to @9 + 16@ and this
 is 25.
 -}
 -- DON'T FORGET TO SPECIFY THE TYPE IN HERE
-sumOfSquares :: Num a => a -> a -> a
-sumOfSquares x y = (^) x 2 +  (^) y  2
+sumOfSquares :: Int -> Int -> Int
+sumOfSquares x y = x * x + y * y
 
 {- | Implement a function that returns the last digit of a given number.
 
@@ -122,12 +122,7 @@ and finds a sum of the numbers inside this string.
 The string contains only spaces and/or numbers.
 -}
 strSum :: String -> Int
-strSum str =
-    sumNums nums
-    where
-        nums = words str
-        sumNums [] = 0
-        sumNums (n:ns) = (read n :: Int) + sumNums ns
+strSum str = sum (map read (words str))
 
 {- | Write a function that takes a number and a list of numbers and
 returns a string, saying how many elements of the list are strictly
