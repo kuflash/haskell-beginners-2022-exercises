@@ -26,6 +26,11 @@ module Lecture2
     , dropSpaces
 
     , Knight (..)
+    , Chest (..)
+    , DragonKind (..)
+    , Dragon (..)
+    , Reward (..)
+    , FightResult (..)
     , dragonFight
 
       -- * Hard
@@ -42,6 +47,8 @@ module Lecture2
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 
+import Data.Char (isSpace)
+
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Implement a function that finds a product of all the numbers in
@@ -52,7 +59,12 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct = error "TODO"
+lazyProduct list =
+  case list of
+    [] -> 1
+    (x:xs)
+      | x == 0 -> 0
+      | otherwise -> x * lazyProduct xs
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -62,7 +74,10 @@ lazyProduct = error "TODO"
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = error "TODO"
+duplicate list =
+  case list of
+    [] -> []
+    (x:xs) -> x : x : duplicate xs
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -74,7 +89,17 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt = error "TODO"
+removeAt :: Int -> [a] -> (Maybe a, [a])
+removeAt pos list = if pos < 0 then (Nothing, list) else walkAndRemove 0 [] list
+  where
+    walkAndRemove :: Int -> [a] -> [a] -> (Maybe a, [a])
+    walkAndRemove currentPosition acc listTail =
+      case listTail of
+        [] -> (Nothing, acc)
+        (x:xs)
+          | currentPosition == pos -> (Just x, acc ++ xs)
+          | currentPosition > pos -> (Nothing, acc ++ xs)
+          | otherwise -> walkAndRemove (currentPosition + 1) (acc ++ [x]) xs
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -85,7 +110,8 @@ lists of even lengths.
 ♫ NOTE: Use eta-reduction and function composition (the dot (.) operator)
   in this function.
 -}
-evenLists = error "TODO"
+evenLists :: [[a]] -> [[a]]
+evenLists = filter (even . length)
 
 {- | The @dropSpaces@ function takes a string containing a single word
 or number surrounded by spaces and removes all leading and trailing
@@ -101,7 +127,8 @@ spaces.
 
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
-dropSpaces = error "TODO"
+dropSpaces :: String -> String
+dropSpaces = takeWhile (not . isSpace) . dropWhile isSpace
 
 {- |
 
@@ -158,13 +185,101 @@ You're free to define any helper functions.
 -}
 
 -- some help in the beginning ;)
-data Knight = Knight
-    { knightHealth    :: Int
-    , knightAttack    :: Int
-    , knightEndurance :: Int
+
+type Health = Int
+type Attack = Int
+
+data Chest a = Chest
+    { chestGold :: Int,
+      chestTreasure :: a
     }
 
-dragonFight = error "TODO"
+data Knight = Knight
+    { knightHealth    :: Health,
+      knightAttack    :: Attack,
+      knightEndurance :: Int
+    }
+
+data DragonKind
+    = RedDragon
+    | BlackDragon
+    | GreenDragon
+
+data Dragon a = Dragon
+    { dragonKind :: DragonKind,
+      dragonHealth :: Health,
+      dragonAttack :: Attack,
+      dragonChest :: Chest a
+    }
+
+data Reward a = Reward
+    { rewardGold :: Int,
+      rewardTreasure :: Maybe a,
+      rewardExperience :: Int
+    }
+
+data FightResult a = Win (Reward a) | Die | Run
+
+getExperience :: DragonKind -> Int
+getExperience dragonKind =
+  case dragonKind of
+    RedDragon -> 100
+    BlackDragon -> 150
+    GreenDragon -> 250
+
+getReward :: Dragon a -> Reward a
+getReward dragon =
+  case dragonKind dragon of
+    GreenDragon ->
+      Reward {
+        rewardGold = chestGold (dragonChest dragon),
+        rewardTreasure = Nothing,
+        rewardExperience = getExperience (dragonKind dragon)
+      }
+    _ ->
+      Reward {
+        rewardGold = chestGold (dragonChest dragon),
+        rewardTreasure = Just (chestTreasure (dragonChest dragon)),
+        rewardExperience = getExperience (dragonKind dragon)
+      }
+
+attackDragon :: Knight -> Dragon a -> (Knight, Dragon a)
+attackDragon knight dragon  =
+  (
+    knight { knightEndurance = knightEndurance knight - 1 },
+    dragon { dragonHealth = dragonHealth dragon - knightAttack knight }
+  )
+
+attackKnight :: Dragon a -> Knight -> (Knight, Dragon a)
+attackKnight dragon knight  =
+  (
+    knight { knightHealth = knightHealth knight - dragonAttack dragon },
+    dragon
+  )
+
+attack :: (Knight, Dragon a) -> Int -> (Knight, Dragon a)
+attack (knight, dragon) attackNumber
+    | attackNumber `mod` 10 == 0 = attackKnight dragon knight
+    | otherwise = attackDragon knight dragon
+
+isDragonDie :: Dragon a -> Bool
+isDragonDie dragon = dragonHealth dragon <= 0
+
+isKnightDie :: Knight -> Bool
+isKnightDie knight = knightHealth knight <= 0
+
+isKnightRun :: Knight -> Bool
+isKnightRun knight = knightEndurance knight <= 0
+
+dragonFight :: Knight -> Dragon a -> FightResult a
+dragonFight knight dragon = fight (knight, dragon) 0
+  where
+    fight :: (Knight, Dragon a) -> Int -> FightResult a
+    fight (actualKnight, actualDragon) attackNumber
+      | isKnightDie actualKnight = Die
+      | isKnightRun actualKnight = Run
+      | isDragonDie actualDragon = Win (getReward actualDragon)
+      | otherwise = fight (attack (actualKnight, actualDragon) (attackNumber + 1 )) (attackNumber + 1 )
 
 ----------------------------------------------------------------------------
 -- Extra Challenges
@@ -185,7 +300,13 @@ False
 True
 -}
 isIncreasing :: [Int] -> Bool
-isIncreasing = error "TODO"
+isIncreasing list =
+  case list of
+    [] -> True
+    [_] -> True
+    (x:y:xs)
+      | x > y -> False
+      | otherwise -> isIncreasing (y:xs)
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -198,7 +319,14 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = error "TODO"
+merge list1 list2 =
+  case (list1, list2) of
+    ([], []) -> []
+    (as, []) -> as
+    ([], bs) -> bs
+    (a:as, b:bs)
+      | a < b -> a : merge as (b:bs)
+      | otherwise -> b : merge (a:as) bs
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -215,8 +343,16 @@ The algorithm of merge sort is the following:
 [1,2,3]
 -}
 mergeSort :: [Int] -> [Int]
-mergeSort = error "TODO"
-
+mergeSort [] = []
+mergeSort [a] = [a]
+mergeSort [a,b]
+  | a > b = merge [b] [a]
+  | otherwise = merge [a] [b]
+mergeSort list = merge (mergeSort (snd parts)) (mergeSort (fst parts))
+  where
+    listLength = length list
+    middle = div listLength 2
+    parts = splitAt middle list
 
 {- | Haskell is famous for being a superb language for implementing
 compilers and interpreters to other programming languages. In the next
@@ -268,7 +404,17 @@ data EvalError
 It returns either a successful evaluation result or an error.
 -}
 eval :: Variables -> Expr -> Either EvalError Int
-eval = error "TODO"
+eval _ (Lit l) = Right l
+eval vars (Var v) =
+  case lookup v vars of
+    (Just value) -> Right value
+    _ -> Left (VariableNotFound v)
+eval vars (Add fe se) =
+  case (eval vars fe, eval vars se) of
+    (Left fr, _) -> Left fr
+    (_, Left sr) -> Left sr
+    (Right fr, Right sr) -> Right (fr + sr)
+
 
 {- | Compilers also perform optimizations! One of the most common
 optimizations is "Constant Folding". It performs arithmetic operations
@@ -292,4 +438,25 @@ Write a function that takes and expression and performs "Constant
 Folding" optimization on the given expression.
 -}
 constantFolding :: Expr -> Expr
-constantFolding = error "TODO"
+constantFolding expression = build (collect [] 0 expression)
+  where
+    collect :: [String] -> Int -> Expr -> ([String], Int)
+    collect vars foldedConst expr =
+      case expr of
+        (Lit l) -> (vars, foldedConst + l)
+        (Var v) -> (vars ++ [v], foldedConst)
+        (Add e1 e2) ->
+          let
+            e1Parts = collect vars foldedConst e1
+            e2Parts = collect vars foldedConst e2
+          in
+            (vars ++ fst e1Parts ++ fst e2Parts, foldedConst + snd e1Parts + snd e2Parts)
+    
+    build :: ([String], Int) -> Expr
+    build parts =
+      case parts of
+        ([], c) -> Lit c
+        ([v], c)
+          | c == 0 -> Var v
+          | otherwise -> Add (Var v) (Lit c)
+        (v:vs, c) -> Add (Var v) (build (vs, c))
