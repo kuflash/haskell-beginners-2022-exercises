@@ -47,7 +47,7 @@ module Lecture2
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 
-import Data.Char (isSeparator)
+import Data.Char (isSpace)
 
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
@@ -90,7 +90,7 @@ return the removed element.
 (Nothing,[1,2,3,4,5])
 -}
 removeAt :: Int -> [a] -> (Maybe a, [a])
-removeAt pos = walkAndRemove 0 []
+removeAt pos list = if pos < 0 then (Nothing, list) else walkAndRemove 0 [] list
   where
     walkAndRemove :: Int -> [a] -> [a] -> (Maybe a, [a])
     walkAndRemove currentPosition acc listTail =
@@ -128,7 +128,7 @@ spaces.
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
 dropSpaces :: String -> String
-dropSpaces = filter (not . isSeparator)
+dropSpaces = takeWhile (not . isSpace) . dropWhile isSpace
 
 {- |
 
@@ -303,10 +303,10 @@ isIncreasing :: [Int] -> Bool
 isIncreasing list =
   case list of
     [] -> True
+    [_] -> True
     (x:y:xs)
       | x > y -> False
       | otherwise -> isIncreasing (y:xs)
-    _ -> isIncreasing list
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -319,14 +319,14 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = walkAndMerge []
-  where
-    walkAndMerge result [] [] = result
-    walkAndMerge result a [] = result ++ a
-    walkAndMerge result [] b = result ++ b
-    walkAndMerge result (a:as) (b:bs)
-      | a >= b = walkAndMerge (result ++ [b, a]) as bs
-      | otherwise = walkAndMerge (result ++ [a]) as (b:bs)
+merge list1 list2 =
+  case (list1, list2) of
+    ([], []) -> []
+    (as, []) -> as
+    ([], bs) -> bs
+    (a:as, b:bs)
+      | a < b -> a : merge as (b:bs)
+      | otherwise -> b : merge (a:as) bs
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -408,7 +408,7 @@ eval _ (Lit l) = Right l
 eval vars (Var v) =
   case lookup v vars of
     (Just value) -> Right value
-    _ -> Left (VariableNotFound ("Variable '" ++ v ++ "' is not found"))
+    _ -> Left (VariableNotFound v)
 eval vars (Add fe se) =
   case (eval vars fe, eval vars se) of
     (Left fr, _) -> Left fr
